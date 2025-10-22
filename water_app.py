@@ -10,15 +10,15 @@ import time
 st.set_page_config(page_title="💧 AI Water Management App", layout="wide")
 
 # ----------------------------
-# SESSION STATE FOR PREMIUM AND PREDICTIONS
+# SESSION STATE
 # ----------------------------
 if "premium_active" not in st.session_state:
     st.session_state["premium_active"] = False
     st.session_state["plan_selected"] = None
     st.session_state["phone"] = None
 
-if "current_prediction" not in st.session_state:
-    st.session_state["current_prediction"] = None
+if "prediction_log" not in st.session_state:
+    st.session_state["prediction_log"] = []  # list of dicts with each prediction
 
 # ----------------------------
 # SIDEBAR NAVIGATION
@@ -31,11 +31,13 @@ page = st.sidebar.radio("Go to:", ["Water Prediction", "Payment"])
 # ----------------------------
 if page == "Water Prediction":
     st.title("💧 AI Water Consumption Prediction")
-    st.markdown("Use AI to predict, visualize, and optimize water usage efficiently.")
+    st.markdown("Predict water consumption dynamically based on your input parameters.")
 
-    # Sample model training dataset (for simplicity)
-    X_train = pd.DataFrame({'temperature': [20, 25, 30, 35, 40],
-                            'rainfall': [0, 50, 100, 150, 200]})
+    # Training dataset
+    X_train = pd.DataFrame({
+        'temperature': [20, 25, 30, 35, 40],
+        'rainfall': [0, 50, 100, 150, 200]
+    })
     y_train = pd.Series([80, 120, 160, 200, 260])
     model = LinearRegression().fit(X_train, y_train)
 
@@ -44,51 +46,57 @@ if page == "Water Prediction":
     temperature = st.sidebar.slider("Temperature (°C)", 10, 50, 25)
     rainfall = st.sidebar.slider("Rainfall (mm)", 0, 300, 50)
 
-    # Prediction Mode
+    # Prediction mode
     mode_options = ["Manual"]
     if st.session_state["premium_active"]:
         mode_options.append("Automatic")
-    mode = st.sidebar.radio("Prediction Mode:", mode_options, index=0, key="mode_selector")
+    mode = st.sidebar.radio("Prediction Mode:", mode_options, index=0)
 
-    # Predict water usage
+    # ----------------------------
+    # PREDICT BUTTON
+    # ----------------------------
     if mode == "Manual":
-        if st.sidebar.button("Predict Water Usage", key="predict_btn"):
+        if st.sidebar.button("Predict Water Usage"):
             predicted_value = model.predict([[temperature, rainfall]])[0]
-            st.session_state["current_prediction"] = {'temperature': temperature,
-                                                       'rainfall': rainfall,
-                                                       'predicted': predicted_value}
+            st.session_state["prediction_log"].append({
+                "Temperature (°C)": temperature,
+                "Rainfall (mm)": rainfall,
+                "Predicted Water Consumed (liters)": predicted_value
+            })
     elif mode == "Automatic":
         predicted_value = model.predict([[temperature, rainfall]])[0]
-        st.session_state["current_prediction"] = {'temperature': temperature,
-                                                   'rainfall': rainfall,
-                                                   'predicted': predicted_value}
+        st.session_state["prediction_log"].append({
+            "Temperature (°C)": temperature,
+            "Rainfall (mm)": rainfall,
+            "Predicted Water Consumed (liters)": predicted_value
+        })
 
-    # Show prediction table if a prediction exists
-    if st.session_state["current_prediction"]:
+    # ----------------------------
+    # SHOW PREDICTION TABLE
+    # ----------------------------
+    if st.session_state["prediction_log"]:
         st.subheader("Prediction Summary Table")
-        display_data = pd.DataFrame([{
-            'Temperature (°C)': st.session_state["current_prediction"]['temperature'],
-            'Rainfall (mm)': st.session_state["current_prediction"]['rainfall'],
-            'Predicted Water Consumed (liters)': st.session_state["current_prediction"]['predicted']
-        }])
+        display_data = pd.DataFrame(st.session_state["prediction_log"])
         st.dataframe(display_data)
 
         # Clear button
-        if st.button("🧹 Clear Prediction"):
-            st.session_state["current_prediction"] = None
-            st.success("✅ Prediction cleared successfully!")
+        if st.button("🧹 Clear Predictions"):
+            st.session_state["prediction_log"] = []
+            st.success("✅ All predictions cleared!")
 
-        # Graph
+        # ----------------------------
+        # GRAPH
+        # ----------------------------
         st.subheader("📈 Water Consumption Trend")
         fig = go.Figure()
         fig.add_trace(go.Scatter(
-            x=[st.session_state["current_prediction"]['temperature']],
-            y=[st.session_state["current_prediction"]['predicted']],
-            mode='markers+text',
+            x=display_data['Temperature (°C)'],
+            y=display_data['Predicted Water Consumed (liters)'],
+            mode='lines+markers+text',
             name='Predicted Usage',
-            text=[f"{st.session_state['current_prediction']['predicted']:.2f} L"],
+            text=[f"{v:.2f} L" for v in display_data['Predicted Water Consumed (liters)']],
             textposition='top center',
-            marker=dict(size=12, color='#1E90FF')
+            line=dict(color='#1E90FF', width=3)
         ))
         fig.update_layout(
             template='plotly_dark',
@@ -120,7 +128,8 @@ elif page == "Payment":
                                "Biometric Login"]
     }
 
-    st.markdown("\n".join([f"{i+1}. {f}" for i, f in enumerate(plan_features[plan_selected])]))
+    for i, feature in enumerate(plan_features[plan_selected], start=1):
+        st.markdown(f"{i}. {feature}")
 
     st.markdown("---")
     st.subheader("🔐 Payment Information")
