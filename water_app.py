@@ -88,12 +88,12 @@ if page == "Water Prediction":
     # ----------------------------
     if st.session_state["prediction_log"]:
         st.subheader("Prediction Summary Table")
+
+        # ✅ FIXED: Properly build and sort the table
         display_data = pd.DataFrame(st.session_state["prediction_log"])
+        display_data = display_data.sort_values(by="Temperature (°C)").reset_index(drop=True)
 
-        # Sort data by temperature for cleaner graph
-        display_data = display_data.sort_values(by='Temperature (°C)')
-
-        st.dataframe(display_data)
+        st.dataframe(display_data, use_container_width=True)
 
         # Clear button
         if st.button("🧹 Clear Predictions"):
@@ -154,9 +154,9 @@ if page == "Water Prediction":
 
         st.subheader("📊 Monthly Summary Dashboard")
         st.markdown(f"""
-        - **Total Water Predicted:** {total_water:.2f} L
-        - **Average Temperature:** {avg_temp:.1f} °C
-        - **Average Rainfall:** {avg_rain:.1f} mm
+        - **Total Water Predicted:** {total_water:.2f} L  
+        - **Average Temperature:** {avg_temp:.1f} °C  
+        - **Average Rainfall:** {avg_rain:.1f} mm  
         """)
 
         # ----------------------------
@@ -172,16 +172,16 @@ if page == "Water Prediction":
 
         st.subheader("🌱 Eco-Meter: Water Efficiency")
         fig_gauge = go.Figure(go.Indicator(
-            mode = "gauge+number",
-            value = latest_water,
-            title = {'text': "Predicted Water Usage (L)"},
-            gauge = {'axis': {'range': [0, 300]},
-                     'bar': {'color': color},
-                     'steps' : [
-                         {'range': [0, 150], 'color': "green"},
-                         {'range': [150, 220], 'color': "yellow"},
-                         {'range': [220, 300], 'color': "red"}],
-                     'threshold' : {'line': {'color': "black", 'width': 4}, 'thickness': 0.75, 'value': latest_water}}))
+            mode="gauge+number",
+            value=latest_water,
+            title={'text': "Predicted Water Usage (L)"},
+            gauge={'axis': {'range': [0, 300]},
+                   'bar': {'color': color},
+                   'steps': [
+                       {'range': [0, 150], 'color': "green"},
+                       {'range': [150, 220], 'color': "yellow"},
+                       {'range': [220, 300], 'color': "red"}],
+                   'threshold': {'line': {'color': "black", 'width': 4}, 'thickness': 0.75, 'value': latest_water}}))
         st.plotly_chart(fig_gauge, use_container_width=True)
 
 # ----------------------------
