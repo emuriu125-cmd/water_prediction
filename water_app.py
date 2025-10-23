@@ -55,6 +55,7 @@ if page == "Water Prediction":
     # ----------------------------
     # PREDICT BUTTON
     # ----------------------------
+    predicted_value = None
     if mode == "Manual":
         if st.sidebar.button("Predict Water Usage"):
             predicted_value = model.predict([[temperature, rainfall]])[0]
@@ -72,17 +73,46 @@ if page == "Water Prediction":
         })
 
     # ----------------------------
+    # SMART WATER TIP
+    # ----------------------------
+    if predicted_value is not None:
+        if rainfall < 50:
+            st.info("💡 Suggestion: Rainfall is low — consider reducing irrigation or reusing pool backwash water.")
+        elif temperature > 35:
+            st.info("💡 Suggestion: High temperature — plan early morning irrigation to reduce evaporation.")
+        else:
+            st.info("💡 Suggestion: Conditions are moderate — maintain your current water schedule.")
+
+    # ----------------------------
     # SHOW PREDICTION TABLE
     # ----------------------------
     if st.session_state["prediction_log"]:
         st.subheader("Prediction Summary Table")
         display_data = pd.DataFrame(st.session_state["prediction_log"])
+
+        # Sort data by temperature for cleaner graph
+        display_data = display_data.sort_values(by='Temperature (°C)')
+
         st.dataframe(display_data)
 
         # Clear button
         if st.button("🧹 Clear Predictions"):
             st.session_state["prediction_log"] = []
             st.success("✅ All predictions cleared!")
+
+        # ----------------------------
+        # WATER USAGE CHANGE STATS
+        # ----------------------------
+        if len(display_data) >= 2:
+            latest = display_data.iloc[-1]["Predicted Water Consumed (liters)"]
+            previous = display_data.iloc[-2]["Predicted Water Consumed (liters)"]
+            diff = previous - latest
+            if diff > 0:
+                st.success(f"✅ Water usage dropped by {diff:.2f} liters since last prediction!")
+            elif diff < 0:
+                st.warning(f"⚠️ Water usage increased by {abs(diff):.2f} liters since last prediction.")
+            else:
+                st.info("ℹ️ Water usage remained the same since last prediction.")
 
         # ----------------------------
         # GRAPH
@@ -109,6 +139,12 @@ if page == "Water Prediction":
         )
         st.plotly_chart(fig, use_container_width=True)
 
+        # ----------------------------
+        # DOWNLOAD CSV
+        # ----------------------------
+        csv = display_data.to_csv(index=False).encode('utf-8')
+        st.download_button("📤 Download Predictions CSV", csv, "predictions.csv", "text/csv")
+
 # ----------------------------
 # PAYMENT TAB
 # ----------------------------
@@ -117,15 +153,18 @@ elif page == "Payment":
     st.markdown("Unlock powerful tools to optimize and visualize your water management data.")
 
     st.subheader("Choose Your Plan")
-    plan_selected = st.radio("Select a plan:", ["Basic - $10", "Pro - $15", "Enterprise - $20", "All Features - $30"])
+    plan_selected = st.radio(
+        "Select a plan:",
+        ["Basic - KSh 1500", "Pro - KSh 2300", "Enterprise - KSh 3000", "All Features - KSh 4500"]
+    )
 
     plan_features = {
-        "Basic - $10": ["Advanced AI", "Live Weather", "Smart History Analytics"],
-        "Pro - $15": ["All Basic features", "Regional Dashboard", "Cloud Sync", "Report Generator"],
-        "Enterprise - $20": ["All Pro features", "Advanced UI", "Notifications", "AI Insights", "Biometric Login"],
-        "All Features - $30": ["Advanced AI", "Live Weather", "Smart History Analytics", "Regional Dashboard",
-                               "Cloud Sync", "Report Generator", "Advanced UI", "Notifications", "AI Insights",
-                               "Biometric Login"]
+        "Basic - KSh 1500": ["Advanced AI", "Live Weather", "Smart History Analytics"],
+        "Pro - KSh 2300": ["All Basic features", "Regional Dashboard", "Cloud Sync", "Report Generator"],
+        "Enterprise - KSh 3000": ["All Pro features", "Advanced UI", "Notifications", "AI Insights", "Biometric Login"],
+        "All Features - KSh 4500": ["Advanced AI", "Live Weather", "Smart History Analytics", "Regional Dashboard",
+                                    "Cloud Sync", "Report Generator", "Advanced UI", "Notifications", "AI Insights",
+                                    "Biometric Login"]
     }
 
     for i, feature in enumerate(plan_features[plan_selected], start=1):
