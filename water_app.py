@@ -145,6 +145,45 @@ if page == "Water Prediction":
         csv = display_data.to_csv(index=False).encode('utf-8')
         st.download_button("📤 Download Predictions CSV", csv, "predictions.csv", "text/csv")
 
+        # ----------------------------
+        # MONTHLY SUMMARY DASHBOARD
+        # ----------------------------
+        total_water = display_data['Predicted Water Consumed (liters)'].sum()
+        avg_temp = display_data['Temperature (°C)'].mean()
+        avg_rain = display_data['Rainfall (mm)'].mean()
+
+        st.subheader("📊 Monthly Summary Dashboard")
+        st.markdown(f"""
+        - **Total Water Predicted:** {total_water:.2f} L
+        - **Average Temperature:** {avg_temp:.1f} °C
+        - **Average Rainfall:** {avg_rain:.1f} mm
+        """)
+
+        # ----------------------------
+        # ECO-METER VISUALIZATION
+        # ----------------------------
+        latest_water = display_data['Predicted Water Consumed (liters)'].iloc[-1]
+        if latest_water < 150:
+            color = "green"
+        elif latest_water < 220:
+            color = "yellow"
+        else:
+            color = "red"
+
+        st.subheader("🌱 Eco-Meter: Water Efficiency")
+        fig_gauge = go.Figure(go.Indicator(
+            mode = "gauge+number",
+            value = latest_water,
+            title = {'text': "Predicted Water Usage (L)"},
+            gauge = {'axis': {'range': [0, 300]},
+                     'bar': {'color': color},
+                     'steps' : [
+                         {'range': [0, 150], 'color': "green"},
+                         {'range': [150, 220], 'color': "yellow"},
+                         {'range': [220, 300], 'color': "red"}],
+                     'threshold' : {'line': {'color': "black", 'width': 4}, 'thickness': 0.75, 'value': latest_water}}))
+        st.plotly_chart(fig_gauge, use_container_width=True)
+
 # ----------------------------
 # PAYMENT TAB
 # ----------------------------
