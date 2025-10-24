@@ -2,31 +2,37 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 from sklearn.linear_model import LinearRegression
+import time
 
 st.set_page_config(page_title="HydroScope", layout="wide")
 
 # ----------------------------
 # SESSION STATE
 # ----------------------------
+if "premium_active" not in st.session_state:
+    st.session_state["premium_active"] = False
+    st.session_state["plan_selected"] = None
+    st.session_state["phone"] = None
+
 if "prediction_log" not in st.session_state:
-    st.session_state["prediction_log"] = []  # store all predictions
+    st.session_state["prediction_log"] = []
 
 if "has_predicted" not in st.session_state:
-    st.session_state["has_predicted"] = False  # track if predict button was pressed
+    st.session_state["has_predicted"] = False
 
 # ----------------------------
-# SIDEBAR
+# SIDEBAR NAVIGATION
 # ----------------------------
 st.sidebar.title("⚙️ Control Panel")
 page = st.sidebar.radio("Navigate", ["Water Prediction", "Payment", "About"])
 
 # ----------------------------
-# WATER PREDICTION PAGE
+# WATER PREDICTION TAB
 # ----------------------------
 if page == "Water Prediction":
     st.title("💧 AI Water Consumption Prediction")
 
-    # Input sliders
+    # Sidebar inputs
     temperature = st.sidebar.slider("🌡️ Temperature (°C)", 0, 50, 25)
     rainfall = st.sidebar.slider("🌧️ Rainfall (mm)", 0, 100, 50)
     predict_btn = st.sidebar.button("🚰 Predict Water Usage")
@@ -42,70 +48,62 @@ if page == "Water Prediction":
     model = LinearRegression()
     model.fit(X, y)
 
-    # ----------------------------
-    # PREDICTION
-    # ----------------------------
+    # Prediction logic
     if predict_btn:
         predicted = model.predict([[temperature, rainfall]])[0]
         st.session_state["has_predicted"] = True
-        # Store predictions
         st.session_state["prediction_log"].append({
             "Temperature (°C)": temperature,
             "Rainfall (mm)": rainfall,
             "Predicted Water Consumed (liters)": predicted
         })
 
-    # ----------------------------
-    # INTRO / ABOUT
-    # ----------------------------
+    # Intro message
     if not st.session_state["has_predicted"]:
         st.markdown("""
         ### 👋 Welcome to HydroScope!
-
         HydroScope helps communities and facilities manage their water use smarter 🌍💦.  
         By entering simple details like **temperature** and **rainfall**, it predicts how much water might be needed —  
         helping save costs, reduce waste, and plan better during dry seasons.
-
-        > Built to make every drop count 💧  
         """)
         st.info("Adjust the sliders on the sidebar and hit **Predict Water Usage** to see your prediction!")
         st.markdown("---")
         st.markdown("**Made by E.M.M 💧**")
 
-    # ----------------------------
-    # DISPLAY PREDICTIONS
-    # ----------------------------
-    if st.session_state["prediction_log"]:
+    # Show predictions
+    if st.session_state["has_predicted"]:
         display_data = pd.DataFrame(st.session_state["prediction_log"])
         st.subheader("📊 Prediction Summary Table")
         st.dataframe(display_data, use_container_width=True)
 
         # Water consumption trend
-st.subheader("📈 Water Consumption Trend")
-fig = go.Figure()
-fig.add_trace(go.Scatter(
-    x=[f"{v:.2f} L" for v in display_data['Predicted Water Consumed (liters)']],
-    y=display_data['Predicted Water Consumed (liters)'],
-    mode="lines+markers+text",
-    text=[f"{v:.2f} L" for v in display_data['Predicted Water Consumed (liters)']],
-    textposition='top center',
-    name="Predicted Water Use",
-    line=dict(width=4)
-))
-fig.update_layout(
-    xaxis_title="Predicted Water Consumed (L)",
-    yaxis_title="Water Consumption (L)",
-    paper_bgcolor="#0e1117",
-    plot_bgcolor="#0e1117",
-    font=dict(color="white"),
-    height=400
-)
-st.plotly_chart(fig, use_container_width=True)
+        st.subheader("📈 Water Consumption Trend")
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(
+            x=[f"{v:.2f} L" for v in display_data['Predicted Water Consumed (liters)']],
+            y=display_data['Predicted Water Consumed (liters)'],
+            mode="lines+markers+text",
+            text=[f"{v:.2f} L" for v in display_data['Predicted Water Consumed (liters)']],
+            textposition='top center',
+            name="Predicted Water Use",
+            line=dict(width=4)
+        ))
+        fig.update_layout(
+            xaxis_title="Predicted Water Consumed (L)",
+            yaxis_title="Water Consumption (L)",
+            paper_bgcolor="#0e1117",
+            plot_bgcolor="#0e1117",
+            font=dict(color="white"),
+            height=400
+        )
+        st.plotly_chart(fig, use_container_width=True)
+
         # Monthly Summary Dashboard
         st.subheader("📊 Monthly Summary Dashboard")
         total_predicted = display_data['Predicted Water Consumed (liters)'].sum()
         avg_temp = display_data['Temperature (°C)'].mean()
         avg_rain = display_data['Rainfall (mm)'].mean()
+
         col1, col2, col3 = st.columns(3)
         col1.metric("💧 Total Water Predicted", f"{total_predicted:.2f} L")
         col2.metric("🌡️ Average Temperature", f"{avg_temp:.1f} °C")
@@ -116,6 +114,7 @@ st.plotly_chart(fig, use_container_width=True)
         latest_water = display_data['Predicted Water Consumed (liters)'].iloc[-1]
         max_val = 300
         efficiency = max(0, min(100, (1 - (latest_water / max_val)) * 100))
+
         gauge = go.Figure(go.Indicator(
             mode="gauge+number",
             value=efficiency,
@@ -141,6 +140,8 @@ st.plotly_chart(fig, use_container_width=True)
         )
         st.plotly_chart(gauge, use_container_width=True)
 
+        st.markdown("**Made by E.M.M 💧**")
+
 # ----------------------------
 # PAYMENT PAGE
 # ----------------------------
@@ -149,7 +150,7 @@ elif page == "Payment":
     st.write("Here you can manage pricing and payments for prediction usage. (Coming soon!)")
 
 # ----------------------------
-# ABOUT PAGE
+# ABOUT TAB
 # ----------------------------
 elif page == "About":
     st.title("ℹ️ About HydroScope")
