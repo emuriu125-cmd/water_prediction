@@ -9,25 +9,24 @@ st.set_page_config(page_title="HydroScope", layout="wide")
 st.sidebar.title("⚙️ Control Panel")
 page = st.sidebar.radio("Navigate", ["Water Prediction", "Payment", "About"])
 
-# ----------------------------
-# INTRO SECTION
-# ----------------------------
-if page == "Water Prediction":
-    st.title("💧 AI Water Consumption Prediction")
-    st.markdown("""
-    ## 👋 Welcome to HydroScope!
-    HydroScope helps communities and facilities manage their water use smarter 🌍💦.
-    By entering simple details like **temperature** and **rainfall**, it predicts how much water might be needed —
-    helping save costs, reduce waste, and plan better during dry seasons.
+    # ----------------------------
+    # INTRO (HydroScope)
+    # ----------------------------
+    if not st.session_state["has_predicted"]:
+        st.markdown("""
+        ### 👋 Welcome to HydroScope!
 
-    Built to make every drop count 💧
+        HydroScope helps communities and facilities manage their water use smarter 🌍💦.  
+        By entering simple details like **temperature** and **rainfall**, it predicts how much water might be needed —  
+        helping save costs, reduce waste, and plan better during dry seasons.
 
-    👉 Adjust the sliders on the sidebar and hit **Predict Water Usage** to see your prediction!
-
-    ---
-
-    """)
-
+        > Built to make every drop count 💧  
+        """)
+        st.info("Adjust the sliders on the sidebar and hit **Predict Water Usage** to see your prediction!")
+        st.markdown("---")
+        st.markdown("**Made by E.M.M 💧**")
+    else:
+        
     # Input sliders
     temperature = st.sidebar.slider("🌡️ Temperature (°C)", 0, 50, 25)
     rainfall = st.sidebar.slider("🌧️ Rainfall (mm)", 0, 100, 50)
