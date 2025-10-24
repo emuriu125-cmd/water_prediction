@@ -177,41 +177,42 @@ if page == "Water Prediction":
         - **Average Rainfall:** {avg_rain:.1f} mm  
         """)
 
-        # ----------------------------
-        # NEW SLEEK ECO-METER
-        # ----------------------------
-        st.subheader("🌱 Eco-Meter: Water Efficiency")
+# ----------------------------
+# NEW SLEEK ECO-METER
+# ----------------------------
+st.subheader("🌱 Eco-Meter: Water Efficiency")
 
-        latest_water = display_data['Predicted Water Consumed (liters)'].iloc[-1]
-        max_val = 300
-        efficiency = max(0, min(100, (1 - (latest_water / max_val)) * 100))
+latest_water = display_data['Predicted Water Consumed (liters)'].iloc[-1]
+max_val = 300
+efficiency = max(0, min(100, (1 - (latest_water / max_val)) * 100))
 
-        gauge = go.Figure(go.Indicator(
-            mode="gauge+number+delta",
-            value=latest_water,
-            title={'text': "Predicted Water Usage (Liters)", 'font': {'size': 20}},
-            delta={'reference': 150, 'increasing': {'color': "red"}, 'decreasing': {'color': "green"}},
-            gauge={
-                'axis': {'range': [0, max_val], 'tickwidth': 1, 'tickcolor': "white"},
-                'bar': {'color': "#1E90FF", 'thickness': 0.25},
-                'bgcolor': "rgba(0,0,0,0)",
-                'borderwidth': 0,
-                'steps': [
-                    {'range': [0, 150], 'color': "rgba(0,255,0,0.3)"},
-                    {'range': [150, 220], 'color': "rgba(255,255,0,0.3)"},
-                    {'range': [220, 300], 'color': "rgba(255,0,0,0.3)"}
-                ],
-                'threshold': {'line': {'color': "white", 'width': 4}, 'value': latest_water}
-            }
-        ))
+gauge = go.Figure(go.Indicator(
+    mode="gauge+number",
+    value=efficiency,
+    number={'suffix': "%", 'font': {'size': 32}},
+    title={'text': "Water Efficiency", 'font': {'size': 22}},
+    gauge={
+        'axis': {'range': [0, 100], 'tickwidth': 1, 'tickcolor': "white"},
+        'bar': {'color': "#00BFFF", 'thickness': 0.3},
+        'bgcolor': "rgba(0,0,0,0)",
+        'borderwidth': 0,
+        'steps': [
+            {'range': [0, 40], 'color': "rgba(255,0,0,0.3)"},
+            {'range': [40, 70], 'color': "rgba(255,255,0,0.3)"},
+            {'range': [70, 100], 'color': "rgba(0,255,0,0.3)"}
+        ],
+        'threshold': {'line': {'color': "white", 'width': 4}, 'value': efficiency}
+    }
+))
 
-        gauge.update_layout(
-            paper_bgcolor="#0e1117",
-            font={'color': "white", 'family': "Arial"},
-            height=350
-        )
+gauge.update_layout(
+    paper_bgcolor="#0e1117",
+    font={'color': "white", 'family': "Arial"},
+    height=300
+)
 
-        st.plotly_chart(gauge, use_container_width=True)
+st.plotly_chart(gauge, use_container_width=True)
+        
 
 # ----------------------------
 # PAYMENT TAB
