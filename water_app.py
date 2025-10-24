@@ -81,26 +81,26 @@ if page == "Water Prediction":
         st.dataframe(display_data, use_container_width=True)
 
         # Water consumption trend
-        st.subheader("📈 Water Consumption Trend")
-        fig = go.Figure()
-        last_preds = display_data['Predicted Water Consumed (liters)']
-        fig.add_trace(go.Scatter(
-            x=[f"Prediction {i+1}" for i in range(len(last_preds))],
-            y=last_preds,
-            mode="lines+markers",
-            name="Predicted Water Use",
-            line=dict(width=4)
-        ))
-        fig.update_layout(
-            xaxis_title="Predictions",
-            yaxis_title="Water Consumption (L)",
-            paper_bgcolor="#0e1117",
-            plot_bgcolor="#0e1117",
-            font=dict(color="white"),
-            height=400
-        )
-        st.plotly_chart(fig, use_container_width=True)
-
+st.subheader("📈 Water Consumption Trend")
+fig = go.Figure()
+fig.add_trace(go.Scatter(
+    x=[f"{v:.2f} L" for v in display_data['Predicted Water Consumed (liters)']],
+    y=display_data['Predicted Water Consumed (liters)'],
+    mode="lines+markers+text",
+    text=[f"{v:.2f} L" for v in display_data['Predicted Water Consumed (liters)']],
+    textposition='top center',
+    name="Predicted Water Use",
+    line=dict(width=4)
+))
+fig.update_layout(
+    xaxis_title="Predicted Water Consumed (L)",
+    yaxis_title="Water Consumption (L)",
+    paper_bgcolor="#0e1117",
+    plot_bgcolor="#0e1117",
+    font=dict(color="white"),
+    height=400
+)
+st.plotly_chart(fig, use_container_width=True)
         # Monthly Summary Dashboard
         st.subheader("📊 Monthly Summary Dashboard")
         total_predicted = display_data['Predicted Water Consumed (liters)'].sum()
