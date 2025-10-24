@@ -5,12 +5,58 @@ from sklearn.linear_model import LinearRegression
 
 st.set_page_config(page_title="HydroScope", layout="wide")
 
-# Sidebar
+# ----------------------------
+# SESSION STATE
+# ----------------------------
+if "prediction_log" not in st.session_state:
+    st.session_state["prediction_log"] = []  # store all predictions
+
+if "has_predicted" not in st.session_state:
+    st.session_state["has_predicted"] = False  # track if predict button was pressed
+
+# ----------------------------
+# SIDEBAR
+# ----------------------------
 st.sidebar.title("⚙️ Control Panel")
 page = st.sidebar.radio("Navigate", ["Water Prediction", "Payment", "About"])
 
+# ----------------------------
+# WATER PREDICTION PAGE
+# ----------------------------
+if page == "Water Prediction":
+    st.title("💧 AI Water Consumption Prediction")
+
+    # Input sliders
+    temperature = st.sidebar.slider("🌡️ Temperature (°C)", 0, 50, 25)
+    rainfall = st.sidebar.slider("🌧️ Rainfall (mm)", 0, 100, 50)
+    predict_btn = st.sidebar.button("🚰 Predict Water Usage")
+
+    # Sample data and model
+    data = pd.DataFrame({
+        "Temperature": [20, 25, 30, 35, 40, 45, 50],
+        "Rainfall": [10, 20, 30, 40, 50, 60, 70],
+        "Water Consumed": [90, 100, 110, 120, 130, 140, 150]
+    })
+    X = data[["Temperature", "Rainfall"]]
+    y = data["Water Consumed"]
+    model = LinearRegression()
+    model.fit(X, y)
+
     # ----------------------------
-    # INTRO (HydroScope)
+    # PREDICTION
+    # ----------------------------
+    if predict_btn:
+        predicted = model.predict([[temperature, rainfall]])[0]
+        st.session_state["has_predicted"] = True
+        # Store predictions
+        st.session_state["prediction_log"].append({
+            "Temperature (°C)": temperature,
+            "Rainfall (mm)": rainfall,
+            "Predicted Water Consumed (liters)": predicted
+        })
+
+    # ----------------------------
+    # INTRO / ABOUT
     # ----------------------------
     if not st.session_state["has_predicted"]:
         st.markdown("""
@@ -25,51 +71,28 @@ page = st.sidebar.radio("Navigate", ["Water Prediction", "Payment", "About"])
         st.info("Adjust the sliders on the sidebar and hit **Predict Water Usage** to see your prediction!")
         st.markdown("---")
         st.markdown("**Made by E.M.M 💧**")
-    else:
-        
-    # Input sliders
-    temperature = st.sidebar.slider("🌡️ Temperature (°C)", 0, 50, 25)
-    rainfall = st.sidebar.slider("🌧️ Rainfall (mm)", 0, 100, 50)
-    predict_btn = st.sidebar.button("🚰 Predict Water Usage")
 
-    # Sample data
-    data = pd.DataFrame({
-        "Temperature": [20, 25, 30, 35, 40, 45, 50],
-        "Rainfall": [10, 20, 30, 40, 50, 60, 70],
-        "Water Consumed": [90, 100, 110, 120, 130, 140, 150]
-    })
-
-    X = data[["Temperature", "Rainfall"]]
-    y = data["Water Consumed"]
-    model = LinearRegression()
-    model.fit(X, y)
-
-    if predict_btn:
-        predicted = model.predict([[temperature, rainfall]])[0]
-        st.success(f"💦 **Predicted Water Consumption:** {predicted:.2f} L")
-
-        # Display summary table
-        display_data = pd.DataFrame({
-            "Temperature (°C)": [temperature],
-            "Rainfall (mm)": [rainfall],
-            "Predicted Water Consumed (liters)": [predicted]
-        })
-
+    # ----------------------------
+    # DISPLAY PREDICTIONS
+    # ----------------------------
+    if st.session_state["prediction_log"]:
+        display_data = pd.DataFrame(st.session_state["prediction_log"])
         st.subheader("📊 Prediction Summary Table")
         st.dataframe(display_data, use_container_width=True)
 
-        # Water consumption trend (simple simulation)
+        # Water consumption trend
         st.subheader("📈 Water Consumption Trend")
         fig = go.Figure()
+        last_preds = display_data['Predicted Water Consumed (liters)']
         fig.add_trace(go.Scatter(
-            x=["Jan", "Feb", "Mar", "Apr"],
-            y=[predicted * 0.9, predicted, predicted * 1.1, predicted * 0.95],
+            x=[f"Prediction {i+1}" for i in range(len(last_preds))],
+            y=last_preds,
             mode="lines+markers",
             name="Predicted Water Use",
             line=dict(width=4)
         ))
         fig.update_layout(
-            xaxis_title="Month",
+            xaxis_title="Predictions",
             yaxis_title="Water Consumption (L)",
             paper_bgcolor="#0e1117",
             plot_bgcolor="#0e1117",
@@ -83,21 +106,16 @@ page = st.sidebar.radio("Navigate", ["Water Prediction", "Payment", "About"])
         total_predicted = display_data['Predicted Water Consumed (liters)'].sum()
         avg_temp = display_data['Temperature (°C)'].mean()
         avg_rain = display_data['Rainfall (mm)'].mean()
-
         col1, col2, col3 = st.columns(3)
         col1.metric("💧 Total Water Predicted", f"{total_predicted:.2f} L")
         col2.metric("🌡️ Average Temperature", f"{avg_temp:.1f} °C")
         col3.metric("🌧️ Average Rainfall", f"{avg_rain:.1f} mm")
 
-        # ----------------------------
-        # NEW SLEEK ECO-METER
-        # ----------------------------
+        # Eco-Meter
         st.subheader("🌱 Eco-Meter: Water Efficiency")
-
         latest_water = display_data['Predicted Water Consumed (liters)'].iloc[-1]
         max_val = 300
         efficiency = max(0, min(100, (1 - (latest_water / max_val)) * 100))
-
         gauge = go.Figure(go.Indicator(
             mode="gauge+number",
             value=efficiency,
@@ -116,22 +134,12 @@ page = st.sidebar.radio("Navigate", ["Water Prediction", "Payment", "About"])
                 'threshold': {'line': {'color': "white", 'width': 4}, 'value': efficiency}
             }
         ))
-
         gauge.update_layout(
             paper_bgcolor="#0e1117",
             font={'color': "white", 'family': "Arial"},
             height=280
         )
-
         st.plotly_chart(gauge, use_container_width=True)
-
-        st.markdown("**Made by E.M.M 💧**")
-
-    else:
-        st.info("""
-        👈 Use the sidebar to enter temperature and rainfall, then click **Predict Water Usage**  
-        to start exploring your data and see HydroScope in action!
-        """)
 
 # ----------------------------
 # PAYMENT PAGE
