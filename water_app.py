@@ -20,8 +20,8 @@ if "premium_active" not in st.session_state:
 if "prediction_log" not in st.session_state:
     st.session_state["prediction_log"] = []  # list of dicts with each prediction
 
-if "show_intro" not in st.session_state:
-    st.session_state["show_intro"] = True  # Flag for showing intro
+if "has_predicted" not in st.session_state:
+    st.session_state["has_predicted"] = False  # Tracks if user has pressed Predict
 
 # ----------------------------
 # SIDEBAR NAVIGATION
@@ -35,24 +35,7 @@ page = st.sidebar.radio("Go to:", ["Water Prediction", "Payment"])
 if page == "Water Prediction":
     st.title("💧 AI Water Consumption Prediction")
 
-    # ----------------------------
-    # SHOW HYDROSCOPE INTRO IF NO PREDICTION YET
-    # ----------------------------
-    if st.session_state["show_intro"] and len(st.session_state["prediction_log"]) == 0:
-        st.markdown("""
-        ### 👋 Welcome to HydroScope!
-
-        HydroScope helps communities and facilities manage their water use smarter 🌍💦.  
-        By entering simple details like **temperature** and **rainfall**, it predicts how much water might be needed —  
-        helping save costs, reduce waste, and plan better during dry seasons.
-
-        > Built to make every drop count 💧  
-        """)
-        st.info("Adjust the sliders on the sidebar and hit **Predict Water Usage** to see your prediction!")
-
-    # ----------------------------
     # Training dataset
-    # ----------------------------
     X_train = pd.DataFrame({
         'temperature': [20, 25, 30, 35, 40],
         'rainfall': [0, 50, 100, 150, 200]
@@ -71,49 +54,73 @@ if page == "Water Prediction":
         mode_options.append("Automatic")
     mode = st.sidebar.radio("Prediction Mode:", mode_options, index=0)
 
-    # ----------------------------
-    # PREDICT BUTTON
-    # ----------------------------
     predicted_value = None
-    prediction_made = False  # flag to hide intro after prediction
-
     if mode == "Manual":
         if st.sidebar.button("Predict Water Usage"):
             predicted_value = model.predict([[temperature, rainfall]])[0]
+            st.session_state["has_predicted"] = True
             st.session_state["prediction_log"].append({
                 "Temperature (°C)": temperature,
                 "Rainfall (mm)": rainfall,
                 "Predicted Water Consumed (liters)": predicted_value
             })
-            prediction_made = True
     elif mode == "Automatic":
         predicted_value = model.predict([[temperature, rainfall]])[0]
+        st.session_state["has_predicted"] = True
         st.session_state["prediction_log"].append({
             "Temperature (°C)": temperature,
             "Rainfall (mm)": rainfall,
             "Predicted Water Consumed (liters)": predicted_value
         })
-        prediction_made = True
-
-    # Hide intro after first prediction
-    if prediction_made:
-        st.session_state["show_intro"] = False
 
     # ----------------------------
-    # SHOW PREDICTION TABLE AND DASHBOARDS
+    # INTRO (HydroScope)
+    # ----------------------------
+    if not st.session_state["has_predicted"]:
+        st.markdown("""
+        ### 👋 Welcome to HydroScope!
+
+        HydroScope helps communities and facilities manage their water use smarter 🌍💦.  
+        By entering simple details like **temperature** and **rainfall**, it predicts how much water might be needed —  
+        helping save costs, reduce waste, and plan better during dry seasons.
+
+        > Built to make every drop count 💧  
+        """)
+        st.info("Adjust the sliders on the sidebar and hit **Predict Water Usage** to see your prediction!")
+        st.markdown("---")
+        st.markdown("**Made by E.M.M 💧**")
+
+    # ----------------------------
+    # SMART WATER TIP
+    # ----------------------------
+    if predicted_value is not None:
+        if rainfall < 50:
+            st.info("💡 Suggestion: Rainfall is low — consider reducing irrigation or reusing pool backwash water.")
+        elif temperature > 35:
+            st.info("💡 Suggestion: High temperature — plan early morning irrigation to reduce evaporation.")
+        else:
+            st.info("💡 Suggestion: Conditions are moderate — maintain your current water schedule.")
+
+    # ----------------------------
+    # SHOW PREDICTION TABLE
     # ----------------------------
     if st.session_state["prediction_log"]:
-        display_data = pd.DataFrame(st.session_state["prediction_log"]).sort_values(by="Temperature (°C)").reset_index(drop=True)
         st.subheader("Prediction Summary Table")
+
+        display_data = pd.DataFrame(st.session_state["prediction_log"])
+        display_data = display_data.sort_values(by="Temperature (°C)").reset_index(drop=True)
+
         st.dataframe(display_data, use_container_width=True)
 
         # Clear button
         if st.button("🧹 Clear Predictions"):
             st.session_state["prediction_log"] = []
-            st.session_state["show_intro"] = True  # show intro again
+            st.session_state["has_predicted"] = False
             st.success("✅ All predictions cleared!")
 
+        # ----------------------------
         # WATER USAGE CHANGE STATS
+        # ----------------------------
         if len(display_data) >= 2:
             latest = display_data.iloc[-1]["Predicted Water Consumed (liters)"]
             previous = display_data.iloc[-2]["Predicted Water Consumed (liters)"]
@@ -125,7 +132,9 @@ if page == "Water Prediction":
             else:
                 st.info("ℹ️ Water usage remained the same since last prediction.")
 
+        # ----------------------------
         # GRAPH
+        # ----------------------------
         st.subheader("📈 Water Consumption Trend")
         fig = go.Figure()
         fig.add_trace(go.Scatter(
@@ -148,11 +157,15 @@ if page == "Water Prediction":
         )
         st.plotly_chart(fig, use_container_width=True)
 
+        # ----------------------------
         # DOWNLOAD CSV
+        # ----------------------------
         csv = display_data.to_csv(index=False).encode('utf-8')
         st.download_button("📤 Download Predictions CSV", csv, "predictions.csv", "text/csv")
 
+        # ----------------------------
         # MONTHLY SUMMARY DASHBOARD
+        # ----------------------------
         total_water = display_data['Predicted Water Consumed (liters)'].sum()
         avg_temp = display_data['Temperature (°C)'].mean()
         avg_rain = display_data['Rainfall (mm)'].mean()
@@ -164,36 +177,41 @@ if page == "Water Prediction":
         - **Average Rainfall:** {avg_rain:.1f} mm  
         """)
 
-        # ECO-METER VISUALIZATION
-        latest_water = display_data['Predicted Water Consumed (liters)'].iloc[-1]
-        if latest_water < 150:
-            color = "green"
-        elif latest_water < 220:
-            color = "yellow"
-        else:
-            color = "red"
-
+        # ----------------------------
+        # NEW SLEEK ECO-METER
+        # ----------------------------
         st.subheader("🌱 Eco-Meter: Water Efficiency")
-        fig_gauge = go.Figure(go.Indicator(
-            mode="gauge+number",
-            value=latest_water,
-            title={'text': "Predicted Water Usage (L)"},
-            gauge={'axis': {'range': [0, 300]},
-                   'bar': {'color': color},
-                   'steps': [
-                       {'range': [0, 150], 'color': "green"},
-                       {'range': [150, 220], 'color': "yellow"},
-                       {'range': [220, 300], 'color': "red"}],
-                   'threshold': {'line': {'color': "black", 'width': 4}, 'thickness': 0.75, 'value': latest_water}}))
-        st.plotly_chart(fig_gauge, use_container_width=True)
 
-    # ----------------------------
-    # FOOTER
-    # ----------------------------
-    st.markdown("""
-    ---
-    **Made by E.M.M**
-    """)
+        latest_water = display_data['Predicted Water Consumed (liters)'].iloc[-1]
+        max_val = 300
+        efficiency = max(0, min(100, (1 - (latest_water / max_val)) * 100))
+
+        gauge = go.Figure(go.Indicator(
+            mode="gauge+number+delta",
+            value=latest_water,
+            title={'text': "Predicted Water Usage (Liters)", 'font': {'size': 20}},
+            delta={'reference': 150, 'increasing': {'color': "red"}, 'decreasing': {'color': "green"}},
+            gauge={
+                'axis': {'range': [0, max_val], 'tickwidth': 1, 'tickcolor': "white"},
+                'bar': {'color': "#1E90FF", 'thickness': 0.25},
+                'bgcolor': "rgba(0,0,0,0)",
+                'borderwidth': 0,
+                'steps': [
+                    {'range': [0, 150], 'color': "rgba(0,255,0,0.3)"},
+                    {'range': [150, 220], 'color': "rgba(255,255,0,0.3)"},
+                    {'range': [220, 300], 'color': "rgba(255,0,0,0.3)"}
+                ],
+                'threshold': {'line': {'color': "white", 'width': 4}, 'value': latest_water}
+            }
+        ))
+
+        gauge.update_layout(
+            paper_bgcolor="#0e1117",
+            font={'color': "white", 'family': "Arial"},
+            height=350
+        )
+
+        st.plotly_chart(gauge, use_container_width=True)
 
 # ----------------------------
 # PAYMENT TAB
